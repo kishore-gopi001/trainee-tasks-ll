@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mini Real-Time Stock Dashboard</title>
+
+<!-- Chart.js + Time Adapter -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+
+<style>
+  :root{--bg:#0f1724;--card:#0b1220;--accent:#06b6d4;--muted:#94a3b8}
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    padding:20px;
+    background:#0f1724;
+    font-family:Inter,Arial,sans-serif;
+    color:white;
+  }
+  .app{
+    display:grid;
+    grid-template-columns:2fr 1fr;
+    gap:20px;
+  }
+  .card{
+    background:#132033;
+    padding:15px;
+    border-radius:12px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.3);
+  }
+  .chart-wrap{
+    height:380px;
+  }
+  .stock-row{
+    padding:8px;
+    background:#18263d;
+    margin-bottom:6px;
+    border-radius:8px;
+    display:flex;
+    justify-content:space-between;
+    cursor:pointer;
+  }
+  .price{font-family:monospace;}
+  .delta.up{color:#4ade80} 
+  .delta.down{color:#f87171}
+  .small{font-size:12px;color:#94a3b8}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <!-- MAIN PANEL -->
+  <div class="card">
+    <h2>📈 Real-Time Stock Prices</h2>
+    <p class="small">Simulated live updates every second</p>
+
+    <label>Symbol: </label>
+    <select id="symbol">
+      <option>AAPL</option>
+      <option>MSFT</option>
+      <option>GOOG</option>
+      <option>TSLA</option>
+      <option>AMZN</option>
+    </select>
+
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+
+    <h3>All Stocks</h3>
+    <div id="stockList"></div>
+  </div>
+
+  <!-- RIGHT SIDEBAR -->
+  <div class="card">
+    <h3>Stock Stats</h3>
+    <div class="small">Selected stock details</div>
+
+    <div class="stock-row">
+      <div>
+        <div id="statSymbol" style="font-size:20px;font-weight:bold">AAPL</div>
+        <div class="small" id="statTime">--</div>
+      </div>
+
+      <div style="text-align:right">
+        <div class="price" id="statPrice">0.00</div>
+        <div id="statDelta">--</div>
+      </div>
+    </div>
+
+    <p class="small" style="margin-top:20px">
+      This is a demo using simulated data.  
+      You can hook a real API by replacing the `fetchSimulatedPrice()` function.
+    </p>
+  </div>
+</div>
+
+<script>
+// =======================
+// Initial Setup
+// =======================
+const symbols = ["AAPL","MSFT","GOOG","TSLA","AMZN"];
+
+const store = {};
+symbols.forEach(sym => {
+  store[sym] = { price: 100 + Math.random()*50, history: [] };
+});
+
+// create initial history
+const initial = 40;
+const t0 = Date.now() - initial*1000;
+symbols.forEach(sym => {
+  let p = store[sym].price;
+  for (let i=0;i<initial;i++){
+    p += (Math.random()-0.5)*1.2;
+    store[sym].history.push({t:t0+i*1000, p});
+  }
+  store[sym].price = p;
+});
+
+// =======================
+// Chart Setup
+// =======================
+const ctx = document.getElementById("chart").getContext("2d");
+
+const myChart = new Chart(ctx, {
+  type: "line",
+  data: {
+    labels: store["AAPL"].history.map(h=>h.t),
+    datasets: [{
+      label:"Price",
+      data: store["AAPL"].history.map(h=>({x:h.t,y:h.p})),
+      borderColor:"#06b6d4",
+      backgroundColor:"rgba(6,182,212,0.1)",
+      tension:0.2,
+      pointRadius:0
+    }]
+  },
+  options: {
+    animation:false,
+    parsing:false,
+    scales:{
+      x:{
+        type:"time",
+        time:{unit:"second"}
+      }
+    },
+    plugins:{legend:{display:false}}
+  }
+});
+
+// =======================
+// DOM Elements
+// =======================
+const symbolSelect = document.getElementById("symbol");
+const stockList = document.getElementById("stockList");
+const statSymbol = document.getElementById("statSymbol");
+const statPrice = document.getElementById("statPrice");
+const statTime = document.getElementById("statTime");
+const statDelta = document.getElementById("statDelta");
+
+// =======================
+// Simulated Price Update
+// =======================
+function fetchSimulatedPrice(symbol){
+  let last = store[symbol].price;
+  let newPrice = last + (Math.random()-0.5)*2;
+  store[symbol].price = newPrice;
+
+  return {
+    time: Date.now(),
+    price: newPrice
+  };
+}
+
+// =======================
+// Render Functions
+// =======================
+function updateChart(){
+  const sym = symbolSelect.value;
+  const hist = store[sym].history;
+
+  myChart.data.labels = hist.map(h=>h.t);
+  myChart.data.datasets[0].data = hist.map(h=>({x:h.t,y:h.p}));
+  myChart.update();
+}
+
+function renderStockList(){
+  stockList.innerHTML = "";
+  symbols.forEach(sym => {
+    const last = store[sym].history.at(-1);
+    const row = document.createElement("div");
+    row.className="stock-row";
+    row.innerHTML = `
+      <div>${sym}<div class="small">${new Date(last.t).toLocaleTimeString()}</div></div>
+      <div style="text-align:right">
+        <div class="price">${last.p.toFixed(2)}</div>
+      </div>
+    `;
+    row.onclick = () => {
+      symbolSelect.value = sym;
+      updateChart();
+      updateStats(sym);
+    };
+    stockList.appendChild(row);
+  });
+}
+
+function updateStats(symbol){
+  const hist = store[symbol].history;
+  const last = hist.at(-1);
+  const prev = hist.at(-2) || last;
+
+  statSymbol.textContent = symbol;
+  statPrice.textContent = last.p.toFixed(2);
+  statTime.textContent = new Date(last.t).toLocaleTimeString();
+
+  const diff = last.p - prev.p;
+  statDelta.textContent = (diff>=0?"+":"") + diff.toFixed(2);
+  statDelta.style.color = diff>=0 ? "#4ade80" : "#f87171";
+}
+
+// =======================
+// Interval Loop
+// =======================
+setInterval(()=>{
+  symbols.forEach(sym => {
+    const res = fetchSimulatedPrice(sym);
+    store[sym].history.push({t:res.time,p:res.price});
+    if(store[sym].history.length > 200)
+      store[sym].history.shift();
+  });
+
+  renderStockList();
+  updateStats(symbolSelect.value);
+  updateChart();
+
+},1000);
+
+// =======================
+// Initial Render
+// =======================
+renderStockList();
+updateStats("AAPL");
+updateChart();
+</script>
+
+</body>
+</html>

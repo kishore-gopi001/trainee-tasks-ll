@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Voice Controlled Search</title>
+<style>
+    body {
+        background: #0f1724;
+        font-family: Arial;
+        color: white;
+        text-align: center;
+        padding: 40px;
+    }
+    #box {
+        margin-top: 40px;
+        padding: 20px;
+        background: #18263d;
+        border-radius: 12px;
+        width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    #startBtn {
+        padding: 12px 25px;
+        border: none;
+        border-radius: 8px;
+        background: #04d4f0;
+        color: #000;
+        cursor: pointer;
+        font-size: 16px;
+        margin-top: 20px;
+    }
+    #startBtn:active {
+        transform: scale(0.97);
+    }
+    #resultBox {
+        margin-top: 20px;
+        padding: 10px;
+        min-height: 40px;
+        background: #0b1628;
+        border-radius: 8px;
+    }
+</style>
+</head>
+<body>
+
+<h1>🎤 Voice-Controlled Search</h1>
+<p>Click the button and start speaking…</p>
+
+<div id="box">
+    <button id="startBtn">Start Listening</button>
+    <div id="resultBox">Your speech will appear here…</div>
+</div>
+
+<script>
+if (!('webkitSpeechRecognition' in window)) {
+    alert("Your browser does not support Speech Recognition. Use Chrome.");
+}
+
+const startBtn = document.getElementById("startBtn");
+const resultBox = document.getElementById("resultBox");
+
+// Create speech recognizer
+const recognition = new webkitSpeechRecognition();
+recognition.continuous = false;
+recognition.lang = 'en-US';
+recognition.interimResults = false;
+
+startBtn.onclick = () => {
+    resultBox.textContent = "Listening… 🎤";
+    recognition.start();
+};
+
+// When user finishes speaking
+recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    resultBox.textContent = "You said: " + text;
+
+    // automatically search on Google
+    const url = "https://www.google.com/search?q=" + encodeURIComponent(text);
+    window.open(url, "_blank");
+};
+
+recognition.onerror = () => {
+    resultBox.textContent = "Failed to capture speech.";
+};
+</script>
+
+</body>
+</html>

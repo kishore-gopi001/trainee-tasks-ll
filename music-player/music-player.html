@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mini Music Player</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#06b6d4;--muted:#94a3b8}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#071126,#0f1724);font-family:Inter,system-ui,Segoe UI,Roboto,-apple-system,"Helvetica Neue",Arial}
+
+    .player{width:320px;padding:20px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));box-shadow:0 8px 30px rgba(2,6,23,0.6);color:#fff}
+
+    .cover-wrap{width:100%;display:flex;justify-content:center;margin-bottom:14px}
+    .cover{width:180px;height:180px;border-radius:12px;object-fit:cover;box-shadow:0 8px 20px rgba(2,6,23,0.6);transition:transform .3s ease}
+
+    /* rotating animation (paused by default) */
+    .cover.spin{animation:spin 6s linear infinite;}
+    @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+    .meta{text-align:center;margin-bottom:14px}
+    .title{font-weight:600;font-size:16px;margin:0}
+    .artist{font-size:13px;color:var(--muted);margin-top:6px}
+
+    .controls{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:12px}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;color:#fff;cursor:pointer}
+    .btn:active{transform:scale(.98)}
+
+    .progress{display:flex;align-items:center;gap:8px}
+    input[type=range]{-webkit-appearance:none;background:transparent;width:100%}
+    input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:6px;background:linear-gradient(90deg,var(--accent),#7c3aed)}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#fff;margin-top:-4px}
+    .time{font-size:12px;color:var(--muted);width:44px;text-align:center}
+
+    .footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px;color:var(--muted)}
+
+    /* small responsive tweak */
+    @media (max-width:360px){.player{width:92%}.cover{width:150px;height:150px}}
+  </style>
+</head>
+<body>
+  <div class="player" role="application" aria-label="Mini music player">
+    <div class="cover-wrap">
+      <img class="cover" id="coverImg" src="https://picsum.photos/400?random=12" alt="Album cover">
+    </div>
+
+    <div class="meta">
+      <p class="title" id="title">Sample Track</p>
+      <p class="artist" id="artist">Unknown Artist</p>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="playPause">Play</button>
+      <button class="btn" id="rewind">« 10s</button>
+      <button class="btn" id="forward">10s »</button>
+    </div>
+
+    <div class="progress">
+      <div class="time" id="current">0:00</div>
+      <input type="range" id="seek" min="0" max="100" value="0" step="0.1" aria-label="Seek">
+      <div class="time" id="duration">0:00</div>
+    </div>
+
+    <div class="footer">
+      <div id="status">Paused</div>
+      <div style="font-size:11px;color:var(--muted)">My-musics</div>
+    </div>
+
+    <!-- audio element: replace src with your own file if needed -->
+    <audio id="audio" preload="metadata" crossorigin>
+      <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+      Your browser does not support the audio element.
+    </audio>
+  </div>
+
+  <script>
+    // Helpers
+    const formatTime = (s) => {
+      if (isNaN(s)) return '0:00';
+      const m = Math.floor(s / 60);
+      const secs = Math.floor(s % 60).toString().padStart(2,'0');
+      return `${m}:${secs}`;
+    };
+
+    // Elements
+    const audio = document.getElementById('audio');
+    const playPauseBtn = document.getElementById('playPause');
+    const seek = document.getElementById('seek');
+    const currentEl = document.getElementById('current');
+    const durationEl = document.getElementById('duration');
+    const statusEl = document.getElementById('status');
+    const cover = document.getElementById('coverImg');
+    const rewindBtn = document.getElementById('rewind');
+    const forwardBtn = document.getElementById('forward');
+
+    let rafId = null;
+    let isSeeking = false;
+
+    // When metadata loads, set duration and max of seek
+    audio.addEventListener('loadedmetadata', () => {
+      durationEl.textContent = formatTime(audio.duration);
+      seek.max = audio.duration;
+    });
+
+    // Update time display while playing
+    function updateProgress() {
+      if (!isSeeking) {
+        seek.value = audio.currentTime;
+        currentEl.textContent = formatTime(audio.currentTime);
+      }
+      if (!audio.paused) {
+        rafId = requestAnimationFrame(updateProgress);
+      }
+    }
+
+    // Play / Pause toggle
+    function togglePlay() {
+      if (audio.paused) {
+        audio.play();
+      } else {
+        audio.pause();
+      }
+    }
+
+    playPauseBtn.addEventListener('click', () => {
+      togglePlay();
+    });
+
+    audio.addEventListener('play', () => {
+      playPauseBtn.textContent = 'Pause';
+      statusEl.textContent = 'Playing';
+      cover.classList.add('spin');
+      // start RAF to update progress smoothly
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateProgress);
+    });
+
+    audio.addEventListener('pause', () => {
+      playPauseBtn.textContent = 'Play';
+      statusEl.textContent = 'Paused';
+      // pause rotation by keeping class but setting animation-play-state via style
+      cover.classList.remove('spin');
+      cancelAnimationFrame(rafId);
+    });
+
+    audio.addEventListener('ended', () => {
+      playPauseBtn.textContent = 'Play';
+      statusEl.textContent = 'Ended';
+      cover.classList.remove('spin');
+      cancelAnimationFrame(rafId);
+      audio.currentTime = 0;
+      seek.value = 0;
+      currentEl.textContent = formatTime(0);
+    });
+
+    // Seek handling
+    seek.addEventListener('input', (e) => {
+      // while dragging show time but don't update audio until change event (for smoother UX)
+      isSeeking = true;
+      currentEl.textContent = formatTime(parseFloat(e.target.value));
+    });
+
+    seek.addEventListener('change', (e) => {
+      audio.currentTime = parseFloat(e.target.value);
+      isSeeking = false;
+      if (!audio.paused) {
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(updateProgress);
+      }
+    });
+
+    // Small skip buttons
+    rewindBtn.addEventListener('click', () => {
+      audio.currentTime = Math.max(0, audio.currentTime - 10);
+      seek.value = audio.currentTime;
+      currentEl.textContent = formatTime(audio.currentTime);
+    });
+    forwardBtn.addEventListener('click', () => {
+      audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 10);
+      seek.value = audio.currentTime;
+      currentEl.textContent = formatTime(audio.currentTime);
+    });
+
+    // Allow clicking the cover to toggle play/pause
+    cover.addEventListener('click', togglePlay);
+
+    // Initialize UI
+    currentEl.textContent = '0:00';
+    durationEl.textContent = '0:00';
+  </script>
+</body>
+</html>

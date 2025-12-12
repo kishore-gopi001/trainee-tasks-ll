@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Movie Finder (Offline)</title>
+
+<style>
+  :root {
+    --bg: #0f1724;
+    --card: #0b1220;
+    --accent: #06b6d4;
+    --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; background:#0f1724; font-family:Arial; color:white; padding:20px;
+  }
+  .container { max-width:1100px; margin:auto; }
+
+  header { display:flex; gap:10px; margin-bottom:20px; align-items:center; }
+  input { padding:10px; border-radius:6px; border:1px solid #333; flex:1; background:#1e293b; color:white; }
+  button { padding:10px 14px; border:none; cursor:pointer; border-radius:6px; background:var(--accent); }
+
+  .movies {
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+    gap:16px;
+  }
+  .card {
+    background:#1e293b; border-radius:8px; overflow:hidden; padding-bottom:10px;
+  }
+  .poster { height:250px; background-size:cover; background-position:center; }
+  .title { padding:10px; font-weight:bold; }
+  .btn { margin:0 10px; padding:6px 12px; font-size:14px; background:#334155; border:1px solid #475569; }
+
+  /* Modal */
+  .modal {
+    position:fixed; inset:0; background:rgba(0,0,0,.7);
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal.open { display:flex; }
+  .modal-card {
+    background:#1e293b; padding:20px; border-radius:10px; max-width:700px; width:100%;
+  }
+  iframe { width:100%; height:350px; margin-top:15px; border:none; }
+</style>
+
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h2>🎥 Movie Finder</h2>
+    <input id="search" placeholder="Search movie...">
+    <button onclick="searchMovie()">Search</button>
+    <button onclick="loadDefault()">Default Store</button>
+  </header>
+
+  <div id="movies" class="movies"></div>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal">
+  <div class="modal-card">
+    <h2 id="m-title"></h2>
+    <p id="m-overview"></p>
+    <p><b>Release:</b> <span id="m-release"></span></p>
+    <p><b>Rating:</b> <span id="m-rating"></span></p>
+
+    <div id="trailer-box"></div>
+
+    <br>
+    <button onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<script>
+/*************************************************
+ * OFFLINE DEFAULT MOVIE STORE
+ *************************************************/
+const DEFAULT_STORE = [
+  {
+    id: 1,
+    title: "Interstellar",
+    overview: "A team of explorers travel through a wormhole to save humanity.",
+    release_date: "2014",
+    vote_average: 8.6,
+    poster: "https://image.tmdb.org/t/p/w500/rAiYTfKGqDCRIIqo664sY9XZIvQ.jpg",
+    trailer: "Lm8p5rlrSkY"
+  },
+  {
+    id: 2,
+    title: "The Matrix",
+    overview: "A hacker discovers reality is a simulation controlled by machines.",
+    release_date: "1999",
+    vote_average: 8.5,
+    poster: "https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg",
+    trailer: "m8e-FF8MsqU"
+  },
+  {
+    id: 3,
+    title: "Inception",
+    overview: "A thief steals information by infiltrating dreams.",
+    release_date: "2010",
+    vote_average: 8.8,
+    poster: "https://image.tmdb.org/t/p/w500/edv5CZvWj09upOsy2Y6IwDhK8bt.jpg",
+    trailer: "YoHD9XEInc0"
+  },
+  {
+    id: 4,
+    title: "Spirited Away",
+    overview: "A girl enters a mystical spirit world.",
+    release_date: "2001",
+    vote_average: 8.5,
+    poster: "https://image.tmdb.org/t/p/w500/dL11DBPcRhWWnJcFXl9A07MrqTI.jpg",
+    trailer: "_7cowIHjCD4"
+  }
+];
+
+/*************************************************
+ * RENDER MOVIES
+ *************************************************/
+function renderMovies(list) {
+  const box = document.getElementById("movies");
+  box.innerHTML = "";
+
+  list.forEach(m => {
+    const card = document.createElement("div");
+    card.className = "card";
+
+    card.innerHTML = `
+      <div class="poster" style="background-image:url('${m.poster}')"></div>
+      <div class="title">${m.title}</div>
+      <button class="btn" onclick='openDetails(${m.id})'>Details</button>
+    `;
+
+    box.appendChild(card);
+  });
+}
+
+/*************************************************
+ * SEARCH FUNCTION (Offline)
+ *************************************************/
+function searchMovie() {
+  const q = document.getElementById("search").value.toLowerCase();
+
+  const results = DEFAULT_STORE.filter(m =>
+    m.title.toLowerCase().includes(q)
+  );
+
+  renderMovies(results);
+}
+
+/*************************************************
+ * LOAD DEFAULT STORE
+ *************************************************/
+function loadDefault() {
+  renderMovies(DEFAULT_STORE);
+}
+
+/*************************************************
+ * DETAILS MODAL
+ *************************************************/
+function openDetails(id) {
+  const m = DEFAULT_STORE.find(x => x.id === id);
+
+  document.getElementById("m-title").innerText = m.title;
+  document.getElementById("m-overview").innerText = m.overview;
+  document.getElementById("m-release").innerText = m.release_date;
+  document.getElementById("m-rating").innerText = m.vote_average;
+
+  // Trailer
+  document.getElementById("trailer-box").innerHTML =
+    `<iframe src="https://www.youtube.com/embed/${m.trailer}" allowfullscreen></iframe>`;
+
+  document.getElementById("modal").classList.add("open");
+}
+
+function closeModal() {
+  document.getElementById("modal").classList.remove("open");
+}
+
+/*************************************************
+ * INITIAL LOAD
+ *************************************************/
+loadDefault();
+</script>
+
+</body>
+</html>
